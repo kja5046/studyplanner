@@ -1,5 +1,5 @@
 // 오프라인용 서비스워커: 앱 파일을 저장해 두고, 새 버전이 있으면 다음 실행 때 반영
-const CACHE = 'study-planner-v1';
+const CACHE = 'study-planner-v2';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
