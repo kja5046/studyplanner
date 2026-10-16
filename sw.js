@@ -1,18 +1,17 @@
-// 오프라인용 서비스워커: 앱 파일을 저장해 두고, 새 버전이 있으면 다음 실행 때 반영
-const CACHE = 'study-planner-v2';
-const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
+// 오프라인용 서비스워커
+// 온라인이면 항상 최신 파일을 먼저 받고(네트워크 우선), 오프라인일 때만 저장해 둔 파일을 씁니다.
+const CACHE = 'study-planner-v3';
+const ASSETS = ['./', 'index.html', 'style.css?v=3', 'app.js?v=3', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
-  self.clients.claim();
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request).then(hit => {
-    const net = fetch(e.request).then(res => {
+  e.respondWith(
+    fetch(e.request, { cache: 'no-cache' }).then(res => {
       if (res.ok && (res.type === 'basic' || res.type === 'cors')) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
       return res;
-    }).catch(() => hit);
-    return hit || net;
-  }));
+    }).catch(() => caches.match(e.request).then(hit => hit || caches.match('./')))
+  );
 });
