@@ -138,6 +138,9 @@ function ddayNum(dateStr) {
 
 // 스티커 이미지: 직접 고른 그림을 300px 이하로 줄여 저장
 function pickSticker(done) {
+  readImage(url => { data.settings.sticker = url; save(); done(); });
+}
+function readImage(cb) {
   const inp = h('input', { type: 'file', accept: 'image/*' });
   inp.addEventListener('change', () => {
     const f = inp.files[0]; if (!f) return;
@@ -146,7 +149,7 @@ function pickSticker(done) {
       const k = Math.min(1, 300 / Math.max(img.width, img.height));
       const c = h('canvas', { width: Math.round(img.width * k), height: Math.round(img.height * k) });
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      data.settings.sticker = c.toDataURL('image/png'); save(); URL.revokeObjectURL(img.src); done();
+      URL.revokeObjectURL(img.src); cb(c.toDataURL('image/png'));
     };
     img.onerror = () => toast('이미지를 열지 못했어요');
     img.src = URL.createObjectURL(f);
@@ -215,9 +218,22 @@ function pageDaily(dateStr) {
     h('div', { class: 'row foot' }, area(day, 'memo', commit, 4, { placeholder: '오늘 하루를 돌아보며 한마디' }), ribbon));
 
   // 스티커
-  const st = data.settings.sticker;
-  const sticker = h('button', { type: 'button', class: 'sticker' + (st ? ' has' : ''), title: st ? '스티커 바꾸기' : '내 스티커 이미지 넣기',
-    onclick: () => pickSticker(route) }, st ? h('img', { src: st, alt: '' }) : icon('image'));
+  // 그날의 스티커 (없으면 설정의 기본 스티커)
+  const sKey = 'sticker:' + dateStr;
+  const sBtn = h('button', { type: 'button', class: 'sticker' });
+  const sDel = h('button', { type: 'button', class: 'sticker-del', title: '오늘 스티커 지우기', hidden: true }, '×');
+  const sticker = h('div', { class: 'sticker-wrap' }, sBtn, sDel);
+  const showSticker = own => {
+    const src = own || data.settings.sticker;
+    sBtn.className = 'sticker' + (src ? ' has' : '') + (own ? '' : ' default');
+    sBtn.title = own ? '오늘 스티커 바꾸기' : '오늘의 스티커 넣기';
+    sBtn.replaceChildren(src ? h('img', { src, alt: '' }) : icon('image'));
+    sDel.hidden = !own;
+  };
+  sBtn.addEventListener('click', () => readImage(url => { Ink.set(sKey, url); showSticker(url); toast('오늘의 스티커를 붙였어요'); }));
+  sDel.addEventListener('click', () => { Ink.set(sKey, null); showSticker(null); });
+  showSticker(null);
+  Ink.get(sKey).then(v => { if (v && location.hash.includes(dateStr)) showSticker(v); });
 
   // D-day 달력
   const dn = ddayNum(dateStr);
@@ -486,8 +502,8 @@ function pageSettings() {
       h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag green' }, '과목')),
         h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록 타임라인 색, 이달의 평가 그래프, 시험 결과 표의 열이 이 목록을 따라가요. 순서를 바꾸면 이미 칠한 칸의 과목도 함께 바뀌니 처음에 정해 두는 걸 권해요.'),
         list),
-      h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag cream' }, '스티커')),
-        h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록 왼쪽 위에 들어갈 그림이에요. 직접 그린 캐릭터나 좋아하는 이미지를 넣어 보세요.'),
+      h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag cream' }, '기본 스티커')),
+        h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록의 스티커 칸을 누르면 그날만의 사진이나 그림을 붙일 수 있어요. 여기서 고른 기본 스티커는 그날 스티커를 붙이지 않은 날에 연하게 보여요.'),
         h('div', { class: 'set-row' },
           st.sticker ? h('img', { src: st.sticker, alt: '', style: { width: '80px', height: '70px', objectFit: 'contain', border: '1px solid var(--line-soft)', borderRadius: '10px', background: '#fff' } }) : null,
           h('button', { class: 'btn', onclick: () => pickSticker(route) }, st.sticker ? '바꾸기' : '이미지 고르기'),

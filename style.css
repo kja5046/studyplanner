@@ -157,6 +157,13 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .sticker svg { width: 30px; height: 30px; }
 .sticker img { width: 100%; height: 100%; object-fit: contain; }
 .sticker.has { border-color: transparent; background: none; }
+.sticker.has.default { opacity: .45; }
+.sticker-wrap { position: relative; flex: none; }
+.sticker-del {
+  position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%;
+  border: 1.3px solid var(--line); background: #fff; font-size: 15px; line-height: 1; padding: 0; color: var(--ink);
+}
+.sticker-del[hidden] { display: none; }
 .quote-lines { flex: 1; display: flex; flex-direction: column; }
 .quote-lines .field { font-size: 17px; height: 32px; }
 .quote-lines .src { align-self: flex-end; width: 50%; text-align: right; font-size: 12px; color: var(--muted); height: 22px; }
