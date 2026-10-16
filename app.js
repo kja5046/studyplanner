@@ -254,7 +254,8 @@ function pageDaily(dateStr) {
           h('button', { onclick: () => go(`#/daily/${ymd(addDays(date, -1))}`), 'aria-label': '이전 날' }, '‹'),
           h('input', { type: 'date', value: dateStr, onchange: e => e.target.value && go('#/daily/' + e.target.value) }),
           h('button', { onclick: () => go(`#/daily/${ymd(addDays(date, 1))}`), 'aria-label': '다음 날' }, '›'),
-          h('button', { onclick: () => go(`#/daily/${ymd(new Date())}`) }, '오늘'))),
+          h('button', { onclick: () => go(`#/daily/${ymd(new Date())}`) }, '오늘'),
+          h('button', { class: 'btn pink', onclick: () => openImport(dateStr) }, '붙여넣기'))),
       h('div', { class: 'd-head' },
         h('div', { class: 'd-left' },
           h('div', { class: 'd-quote' }, sticker,
@@ -269,6 +270,105 @@ function pageDaily(dateStr) {
       h('div', { class: 'd-body' }, tasks, h('div', { class: 'tl-wrap' }, tl)),
       brushes),
   };
+}
+
+// ============================================================ 계획 붙여넣기
+// 형식 예)
+//   날짜: 2026-10-17
+//   한마디: 더딘 것을 염려하지 말고 멈출 것을 염려하라
+//   출처: 공자
+//   아침 | 영어 단어 30개
+//        | 듣기 2회
+//   국어 | 문학 기출 3회분
+//   - 구분 없는 할 일
+//   메모: 저녁엔 오답 정리
+function parsePlan(text) {
+  const out = { date: null, q: [], qs: null, memo: [], tasks: [] };
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trim(); if (!line) continue;
+    let m;
+    if ((m = line.match(/^#?\s*(?:플래너|날짜|date)\s*[:：]?\s*(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/i))) { out.date = `${m[1]}-${pad(m[2])}-${pad(m[3])}`; continue; }
+    if ((m = line.match(/^(?:오늘의\s*)?한마디\s*[:：]\s*(.*)$/))) { out.q.push(m[1]); continue; }
+    if ((m = line.match(/^출처\s*[:：]\s*(.*)$/))) { out.qs = m[1]; continue; }
+    if ((m = line.match(/^(?:메모|피드백|회고)\s*[:：]\s*(.*)$/))) { out.memo.push(m[1]); continue; }
+    if (/^[=#]{2,}/.test(line)) continue;
+    let done = false, body = line;
+    body = body.replace(/^\[\s*([xXvV✓✔]?)\s*\]\s*/, (_, c) => { done = !!c; return ''; });
+    if (body.includes('|')) {
+      const i = body.indexOf('|');
+      out.tasks.push({ s: body.slice(0, i).trim(), t: body.slice(i + 1).trim().replace(/^\[\s*([xXvV✓✔]?)\s*\]\s*/, (_, c) => { done = done || !!c; return ''; }), d: done });
+    } else {
+      out.tasks.push({ s: '', t: body.replace(/^([-*·•]|\d+[.)])\s+/, ''), d: done });
+    }
+  }
+  return out;
+}
+function applyPlan(dateKey, plan, mode) {
+  const day = data.days[dateKey] || {};
+  fill(day.tasks = day.tasks || [], TASK_ROWS, () => ({ s: '', t: '', d: false }));
+  day.slots = day.slots || Array(144).fill(null);
+  if (mode === 'replace') {
+    day.tasks = plan.tasks.map(t => ({ ...t }));
+    fill(day.tasks, TASK_ROWS, () => ({ s: '', t: '', d: false }));
+    if (plan.q.length) { day.q1 = plan.q[0] || ''; day.q2 = plan.q[1] || ''; }
+    if (plan.qs != null) day.qs = plan.qs;
+    if (plan.memo.length) day.memo = plan.memo.join('\n');
+  } else {
+    let i = 0;
+    for (const t of plan.tasks) {
+      while (i < day.tasks.length && (day.tasks[i].s || day.tasks[i].t)) i++;
+      if (i < day.tasks.length) day.tasks[i] = { ...t }; else day.tasks.push({ ...t });
+      i++;
+    }
+    if (plan.q.length) { if (!day.q1) day.q1 = plan.q[0]; else if (!day.q2) day.q2 = plan.q[0]; if (plan.q[1] && !day.q2) day.q2 = plan.q[1]; }
+    if (plan.qs != null && !day.qs) day.qs = plan.qs;
+    if (plan.memo.length) day.memo = (day.memo ? day.memo + '\n' : '') + plan.memo.join('\n');
+  }
+  data.days[dateKey] = day; save();
+}
+function openImport(dateStr, initial) {
+  const ta = h('textarea', { class: 'imp-text', placeholder: '여기에 계획을 붙여 넣으세요', value: initial || '' });
+  const info = h('div', { class: 'imp-info' });
+  const close = () => bg.remove();
+  const update = () => {
+    const p = parsePlan(ta.value);
+    const bits = [];
+    if (p.date) bits.push(`${p.date}`);
+    bits.push(`할 일 ${p.tasks.length}개`);
+    if (p.q.length) bits.push(`한마디 ${p.q.length}줄`);
+    if (p.memo.length) bits.push('메모 있음');
+    info.textContent = ta.value.trim() ? bits.join(' · ') : '';
+    return p;
+  };
+  ta.addEventListener('input', update);
+  const run = mode => {
+    const p = update();
+    if (!p.tasks.length && !p.q.length && !p.memo.length) { toast('넣을 내용이 없어요'); return; }
+    let target = dateStr;
+    if (p.date && p.date !== dateStr) {
+      if (confirm(`이 계획은 ${p.date} 날짜예요.\n그 날짜에 넣을까요? (취소하면 지금 보고 있는 ${dateStr}에 넣어요)`)) target = p.date;
+    }
+    if (mode === 'replace' && !confirm('이 날의 할 일·한마디·메모를 붙여 넣은 내용으로 바꿀까요? 타임라인과 필기는 그대로예요.')) return;
+    applyPlan(target, p, mode); close();
+    toast(`할 일 ${p.tasks.length}개를 넣었어요`);
+    go('#/daily/' + target);
+  };
+  const paste = h('button', { class: 'btn', onclick: async () => {
+    try { ta.value = await navigator.clipboard.readText(); update(); }
+    catch { toast('클립보드를 읽지 못했어요. 칸을 길게 눌러 붙여넣기 해 주세요'); ta.focus(); }
+  } }, '클립보드에서 가져오기');
+  const box = h('div', { class: 'modal' },
+    h('div', { class: 'modal-head' }, h('span', { class: 'tag pink' }, '계획 붙여넣기'), h('span', { class: 'muted', style: { fontSize: '13px' } }, dateStr)),
+    ta, info,
+    h('details', { class: 'imp-help' }, h('summary', null, '형식 보기'),
+      h('pre', null, '날짜: 2026-10-17\n한마디: 더딘 것을 염려하지 말고 멈출 것을 염려하라\n출처: 공자\n아침 | 영어 단어 30개\n     | 듣기 2회\n국어 | 문학 기출 3회분\n- 구분 없이 쓰는 할 일\n[x] 이미 끝낸 일은 이렇게\n메모: 저녁엔 오답 정리'),
+      h('p', null, '“|” 왼쪽은 구분(시간대·과목), 오른쪽은 할 일이에요. 날짜 줄은 없어도 돼요.')),
+    h('div', { class: 'modal-btns' }, paste, h('span', { style: { flex: 1 } }),
+      h('button', { class: 'btn', onclick: close }, '취소'),
+      h('button', { class: 'btn', onclick: () => run('replace') }, '바꾸기'),
+      h('button', { class: 'btn primary', onclick: () => run('append') }, '빈 칸에 넣기')));
+  const bg = h('div', { class: 'modal-bg', onclick: e => { if (e.target === bg) close(); } }, box);
+  document.body.append(bg); update(); ta.focus();
 }
 
 function pageMonthly(mStr) {
