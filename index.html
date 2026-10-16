@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>스터디 플래너</title>
+  <meta name="theme-color" content="#f6f1e7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="플래너">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <nav class="tabs" id="tabs">
+      <a href="#/daily" data-tab="daily"><span class="ico">☀</span>일간</a>
+      <a href="#/monthly" data-tab="monthly"><span class="ico">▦</span>월간</a>
+      <a href="#/review" data-tab="review"><span class="ico">★</span>이달의 평가</a>
+      <a href="#/subjects" data-tab="subjects"><span class="ico">✎</span>과목별 계획</a>
+      <a href="#/lectures" data-tab="lectures"><span class="ico">▶</span>인강</a>
+      <a href="#/exams" data-tab="exams"><span class="ico">✓</span>시험 결과</a>
+      <a href="#/settings" data-tab="settings"><span class="ico">⚙</span>설정</a>
+    </nav>
+    <div class="pen-tools" id="penTools">
+      <button id="penToggle" class="pen-toggle" title="필기 모드">✍ 필기</button>
+      <div class="pen-sub" id="penSub" hidden>
+        <div class="swatches" id="swatches"></div>
+        <button data-tool="pen" class="tool active" title="펜">펜</button>
+        <button data-tool="hl" class="tool" title="형광펜">형광</button>
+        <button data-tool="eraser" class="tool" title="지우개">지우개</button>
+        <select id="penWidth" title="굵기">
+          <option value="1.5">가늘게</option>
+          <option value="2.5" selected>보통</option>
+          <option value="4">굵게</option>
+        </select>
+        <button id="penUndo" title="실행취소">↶</button>
+        <button id="penClear" title="이 페이지 필기 모두 지우기">비우기</button>
+        <label class="pen-only"><input type="checkbox" id="penOnly"> 펜슬만</label>
+      </div>
+    </div>
+  </header>
+
+  <main id="stage">
+    <div class="page-wrap" id="pageWrap">
+      <div class="page" id="page">
+        <div id="pageContent"></div>
+        <canvas id="ink" class="ink"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
