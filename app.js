@@ -1112,9 +1112,19 @@ function fit() {
     document.body.classList.add('mobile');
     pageEl.style.transform = ''; wrap.style.width = ''; wrap.style.height = '';
     if (pen.on) $('#penToggle').click();
+    // 하루 기록은 한 화면에 딱 맞게: 페이지 아래 끝을 홈 버튼 줄 바로 위에 맞춘다
+    const daily = !/^#\/(monthly|review|subjects|lectures|exams|settings|widget)/.test(location.hash);
+    document.body.classList.toggle('fitday', daily);
+    if (daily) {
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const top = wrap.getBoundingClientRect().top + window.scrollY;
+      const railTop = rail.getBoundingClientRect().top + window.scrollY;
+      const bottom = railTop > top ? railTop - 10 : vh - 80;
+      document.documentElement.style.setProperty('--fit-h', Math.max(300, Math.round(Math.min(bottom, vh - 10) - top)) + 'px');
+    }
     return;
   }
-  document.body.classList.remove('mobile');
+  document.body.classList.remove('mobile', 'fitday');
   const railW = getComputedStyle(rail).position === 'fixed' ? 0 : rail.offsetWidth + 12;
   const avail = stage.clientWidth - (window.innerWidth <= 760 ? 24 : 32) - railW;
   const s = Math.min(1.2, avail / 1000);
