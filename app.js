@@ -570,7 +570,7 @@ function pageExams(n) {
     title: '시험 결과',
     el: h('div', null,
       h('div', { class: 'ph' }, banner('cream', h('h1', { class: 'kr' }, '시험 결과 정리')), pager('exams', idx, Math.max(pages.length, idx + 1))),
-      h('div', { class: 'box' }, table),
+      h('div', { class: 'box exam-wrap' }, table),
       chartBox,
       h('div', { class: 'fb' },
         h('div', { class: 'box' }, h('div', { class: 'box-title' }, h('span', { class: 'tag pink' }, '칭찬해')), area(pg, 'good', commit, 4)),
@@ -1105,7 +1105,16 @@ function driveLogo() {
 // ============================================================ layout / router
 const stage = $('#stage'), wrap = $('#pageWrap'), content = $('#pageContent'), rail = $('#rail');
 let cleanup = [];
+// 휴대폰(가로 760px 이하)은 페이지를 줄이지 않고 화면 너비에 맞춘 세로 배치로 보여준다
+const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
 function fit() {
+  if (isMobile()) {
+    document.body.classList.add('mobile');
+    pageEl.style.transform = ''; wrap.style.width = ''; wrap.style.height = '';
+    if (pen.on) $('#penToggle').click();
+    return;
+  }
+  document.body.classList.remove('mobile');
   const railW = getComputedStyle(rail).position === 'fixed' ? 0 : rail.offsetWidth + 12;
   const avail = stage.clientWidth - (window.innerWidth <= 760 ? 24 : 32) - railW;
   const s = Math.min(1.2, avail / 1000);

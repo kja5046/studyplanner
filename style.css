@@ -392,6 +392,84 @@ body.widget-mode #widgetRoot { display: block; padding: calc(env(safe-area-inset
   .rail-tools { flex-direction: row; gap: 6px; }
   .rtab { width: 42px; height: 40px; flex: none; }
   .swatches { grid-template-columns: repeat(6, 1fr); padding: 0 4px; }
+
+  /* 휴대폰 전용 배치: 줄여 보이지 않고 화면 너비에 맞춰 세로로 쌓는다 (필기 레이어는 태블릿·PC에서만) */
+  .page-wrap { width: 100%; }
+  .page { position: static; width: 100%; min-height: 0; padding: 6px; transform: none !important; }
+  .frame { min-height: 0; padding: 18px 14px 20px; }
+  .ink, #penToggle, .rail-tools { display: none !important; }
+  .ph { flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .banner { padding: 8px 26px 8px 14px; min-height: 46px; gap: 10px; }
+  .banner h1 { font-size: 24px; }
+  .banner h1.kr { font-size: 23px; }
+  .banner h1 small { font-size: 14px; margin-left: 6px; }
+  .banner .dot-ic { width: 22px; height: 22px; }
+  .banner .dot-ic::before { left: 8px; }
+  .navbtns { width: 100%; flex-wrap: wrap; }
+  .navbtns input[type=date], .navbtns input[type=month] { flex: 1; min-width: 150px; }
+  .navbtns button, .btn { padding: 8px 12px; font-size: 15px; }
+  .field { font-size: 16px; height: 40px; line-height: 40px; }
+  textarea.field { line-height: 36px; }
+  .lined { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 35px, var(--line-faint) 35px, var(--line-faint) 36px); }
+
+  /* 하루 기록 */
+  .d-head { grid-template-columns: 1fr; gap: 14px; }
+  .d-head > div:last-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dcal { flex: 1; margin-top: 10px; }
+  .dcal .big { font-size: 42px; }
+  .dstat { margin-top: 10px; flex: none; }
+  .dstat .n { font-size: 32px; }
+  .dstat .n small { font-size: 20px; }
+  .sticker { width: 84px; height: 76px; }
+  .d-quote { gap: 12px; }
+  .quote-lines .field { font-size: 16px; }
+  /* 휴대폰: 할 일 → 칠할 과목 → 시간표 순서로 (과목을 먼저 고르고 칠하도록) */
+  .d-body { display: contents; }
+  .tasks { order: 1; border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); }
+  .brushes { order: 2; margin: 14px 0 10px; }
+  .tl-wrap { order: 3; }
+  .tasks .row { grid-template-columns: 62px 1fr 46px; min-height: 46px; }
+  .tasks .row .subj .field { font-size: 14px; padding: 0 4px; }
+  .tasks .foot { grid-template-columns: 1fr 56px; min-height: 130px; }
+  .check { width: 44px; height: 42px; }
+  .tl-wrap { border-left: 0; border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); margin-top: 0; }
+  .timeline { grid-template-columns: 34px repeat(6, 1fr); }
+  .timeline .c { min-height: 30px; }
+  .timeline .h { font-size: 12px; }
+  .brushes { justify-content: flex-start; gap: 8px; }
+  .brushes .lbl { width: 100%; }
+  .brushes button { font-size: 15px; padding: 6px 12px 6px 8px; }
+
+  /* 월간 */
+  .month-goal { flex-wrap: wrap; }
+  .cal .cell { min-height: 74px; padding: 3px 3px; }
+  .cal .cell textarea { font-size: 12px; line-height: 15px; }
+  .cal .cell .t { font-size: 10px; }
+  .cal .dow { font-size: 11px; letter-spacing: 0; }
+  .month-foot { flex-wrap: wrap; gap: 10px; }
+
+  /* 이달의 평가 */
+  .review-top { grid-template-columns: 1fr; }
+  .eval td:first-child { width: 64px; }
+  .eval td:last-child { width: 118px; }
+  .stars button svg { width: 19px; height: 19px; }
+  .life { grid-template-columns: 1fr 1fr; }
+  .life > div:nth-child(3n) { border-right: 1px dashed var(--line-soft); }
+  .life > div:nth-child(2n) { border-right: 0; }
+  .life > div:nth-last-child(-n+3) { border-bottom: 1px dashed var(--line-soft); }
+  .life > div:nth-last-child(-n+2) { border-bottom: 0; }
+
+  /* 과목별 · 인강 · 시험 */
+  .sgrid { grid-template-columns: 1fr; }
+  .lec { grid-template-columns: 1fr; }
+  .lec .meta { border-right: 0; border-bottom: 1.5px solid var(--line); }
+  .lec .grid { grid-template-columns: repeat(10, 1fr); }
+  .lec .grid button { font-size: 12px; }
+  .exam-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .exam { min-width: 720px; }
+  .fb { grid-template-columns: 1fr; }
+  .set-sec { padding: 14px; }
+  .sync-sec .set-row .btn { flex: 1 1 100%; justify-content: center; }
 }
 
 @media print {
