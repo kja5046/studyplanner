@@ -53,15 +53,16 @@ let data;
 try { data = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || 'null') || {}); }
 catch { data = defaults(); }
 
-let saveTimer;
-function save() {
+let saveTimer, dirty = false;
+function flush() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(data)); }
-    catch (e) { toast('저장 공간이 부족해요. 설정에서 백업 후 정리해 주세요.'); }
-  }, 250);
+  if (!dirty) return;
+  try { localStorage.setItem(KEY, JSON.stringify(data)); dirty = false; }
+  catch (e) { toast('저장 공간이 부족해요. 설정에서 백업 후 정리해 주세요.'); }
 }
-window.addEventListener('pagehide', () => { clearTimeout(saveTimer); try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} });
+function save() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
+// 저장하지 않은 변경이 있을 때만 닫기 전에 저장 (다른 창의 기록을 덮어쓰지 않도록)
+window.addEventListener('pagehide', flush);
 
 const subjects = () => data.settings.subjects;
 const subjColor = i => (subjects()[i] || {}).color || '#ddd';
@@ -782,6 +783,7 @@ function sizeCanvas() {
 }
 function redrawInk(rebuild) {
   const k = sizeCanvas();
+  if (!canvas.width || !canvas.height) return k;
   if (rebuild || !pen.cache) {
     pen.cache = pen.cache && pen.cache.width === canvas.width && pen.cache.height === canvas.height ? pen.cache : document.createElement('canvas');
     pen.cache.width = canvas.width; pen.cache.height = canvas.height;
@@ -809,6 +811,107 @@ async function loadInk(key) {
   pen.strokes = (s || []).map(x => ({ ...x, _n: strokeN++ })); redrawInk(true);
 }
 
+// ============================================================ 위젯 (오늘 한눈에 보기)
+// 주소: widget.html 또는 index.html#/widget
+let widgetTimer = null, widgetDay = null;
+function reloadData() {
+  try { data = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || 'null') || {}); } catch {}
+}
+// 이미지 저장(html2canvas)에서도 보이도록 <use> 대신 경로를 직접 넣은 체크 아이콘
+function checkSvg() {
+  const svg = document.createElementNS(SVGNS, 'svg'); svg.setAttribute('viewBox', '0 0 24 24');
+  const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', 'M4.5 12.8c1.7 1.4 3 3 4.1 5.2C11 12.3 14.6 7.6 19.8 4');
+  p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#ec8c8c'); p.setAttribute('stroke-width', '2.2'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round');
+  svg.append(p); return svg;
+}
+function renderWidget() {
+  const root = $('#widgetRoot');
+  const dateStr = ymd(new Date()); widgetDay = dateStr;
+  const date = parseYmd(dateStr);
+  const day = data.days[dateStr] || {};
+  const tasks = (day.tasks || []).map((t, i) => ({ t, i })).filter(x => x.t.s || x.t.t);
+  const commit = attach(data.days, dateStr, day);
+  const mins = dayMinutes(dateStr);
+  const dn = ddayNum(dateStr);
+  const doneN = tasks.filter(x => x.t.d).length;
+
+  // 할 일 목록
+  let lastS = '';
+  const list = h('div', { class: 'w-tasks' }, tasks.length ? tasks.map(({ t }) => {
+    const row = h('div', { class: 'w-row' + (t.d ? ' done' : '') });
+    const label = t.s && t.s !== lastS ? t.s : ''; if (t.s) lastS = t.s;
+    const ck = h('button', { type: 'button', class: 'check' + (t.d ? ' on' : ''), 'aria-label': '완료' }, checkSvg());
+    ck.addEventListener('click', () => {
+      t.d = !t.d; ck.classList.toggle('on', t.d); row.classList.toggle('done', t.d); commit();
+      prog.textContent = `${tasks.filter(x => x.t.d).length} / ${tasks.length}`;
+    });
+    row.append(h('span', { class: 'w-s' }, label), h('span', { class: 'w-t' }, t.t), ck);
+    return row;
+  }) : h('div', { class: 'w-empty' }, '오늘 할 일이 아직 없어요', h('br'), h('a', { href: 'index.html#/daily/' + dateStr, target: '_blank' }, '플래너에서 계획 넣기')));
+  const prog = h('span', { class: 'w-prog' }, tasks.length ? `${doneN} / ${tasks.length}` : '');
+
+  // 타임라인 띠 (05시~다음날 04시)
+  const strip = h('div', { class: 'w-strip' });
+  const slots = day.slots || [];
+  for (let r = 0; r < 24; r++) {
+    const col = h('div', { class: 'w-hour' }, h('i', null, r % 3 === 0 ? pad((START_HOUR + r) % 24) : ''));
+    for (let c = 0; c < 6; c++) { const v = slots[r * 6 + c]; col.append(h('b', { style: v != null ? { background: subjColor(v) } : null })); }
+    strip.append(col);
+  }
+
+  const sticker = h('div', { class: 'w-sticker' });
+  const showSticker = src => { sticker.replaceChildren(src ? h('img', { src, alt: '' }) : ''); sticker.style.display = src ? '' : 'none'; };
+  showSticker(data.settings.sticker);
+  Ink.get('sticker:' + dateStr).then(v => { if (v) showSticker(v); });
+  const quote = [day.q1, day.q2].filter(Boolean).join(' ');
+
+  const card = h('div', { class: 'w-card', id: 'widgetCard' },
+    h('div', { class: 'w-head' },
+      banner('pink', h('h1', null, `${pad(date.getMonth() + 1)} / ${pad(date.getDate())}`, h('small', null, DOW[date.getDay()]))),
+      h('div', { class: 'w-dday' }, dn == null ? '' : [h('span', null, data.settings.ddayLabel || 'D-day'), h('b', null, dn === 0 ? 'D-DAY' : dn > 0 ? `D-${dn}` : `D+${-dn}`)])),
+    (quote || data.settings.sticker) ? h('div', { class: 'w-quote' }, sticker, h('p', null, quote || '')) : sticker,
+    h('div', { class: 'w-stats' },
+      h('div', null, h('span', null, '오늘 공부'), h('b', null, `${Math.floor(mins / 60)}`, h('small', null, '시간 '), pad(mins % 60), h('small', null, '분'))),
+      h('div', null, h('span', null, '완료'), h('b', null, prog))),
+    list,
+    h('div', { class: 'w-strip-wrap' },
+      h('div', { class: 'w-strip-head' }, h('span', null, '오늘의 공부 시간표'), day.great ? h('span', { class: 'w-stamp' }, '참 잘했어') : null),
+      strip));
+
+  root.replaceChildren(card,
+    h('div', { class: 'w-foot' },
+      h('a', { class: 'btn', href: 'index.html#/daily/' + dateStr, target: '_blank' }, '플래너 열기'),
+      h('button', { class: 'btn', onclick: () => { reloadData(); renderWidget(); } }, '새로고침'),
+      h('button', { class: 'btn pink', onclick: saveWidgetImage }, '이미지로 저장')));
+  document.title = `오늘 ${date.getMonth() + 1}/${date.getDate()} · 플래너`;
+}
+async function saveWidgetImage() {
+  const card = $('#widgetCard');
+  try {
+    if (!window.html2canvas) await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/html2canvas.min.js';
+      s.onload = res; s.onerror = rej; document.head.append(s);
+    });
+    const c = await window.html2canvas(card, { scale: 2, backgroundColor: '#fffefc', useCORS: true });
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const name = `planner-${ymd(new Date())}.png`;
+    const file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: '오늘 플래너' }); return; }
+    const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove();
+    toast('이미지를 저장했어요');
+  } catch (e) { if (e && e.name !== 'AbortError') toast('이미지를 만들지 못했어요'); }
+}
+function startWidgetMode() {
+  document.body.classList.add('widget-mode');
+  renderWidget();
+  if (widgetTimer) return;
+  // 다른 창(플래너)에서 고치면 바로 반영, 날짜가 바뀌면 새 날로
+  window.addEventListener('storage', e => { if (e.key === KEY && document.body.classList.contains('widget-mode')) { reloadData(); renderWidget(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && document.body.classList.contains('widget-mode')) { reloadData(); renderWidget(); } });
+  widgetTimer = setInterval(() => { if (document.body.classList.contains('widget-mode') && ymd(new Date()) !== widgetDay) { reloadData(); renderWidget(); } }, 60000);
+}
+
 // ============================================================ layout / router
 const stage = $('#stage'), wrap = $('#pageWrap'), content = $('#pageContent'), rail = $('#rail');
 let cleanup = [];
@@ -829,6 +932,8 @@ function route() {
   cleanup.forEach(f => f()); cleanup = [];
   const [, tab = 'daily', arg] = location.hash.split('/');
   const today = new Date();
+  if (tab === 'widget') { if (pen.on) $('#penToggle').click(); startWidgetMode(); return; }
+  document.body.classList.remove('widget-mode');
   let page;
   switch (tab) {
     case 'monthly': page = pageMonthly(/^\d{4}-\d{2}$/.test(arg) ? arg : ym(today)); break;
@@ -850,9 +955,21 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
+// 위젯이나 다른 탭에서 기록을 바꾸면 이 창에도 반영
+let pendingSync = false;
+function syncFromStorage() {
+  if (document.body.classList.contains('widget-mode')) return;
+  const a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.closest('#stage')) { pendingSync = true; return; }
+  pendingSync = false;
+  const y = window.scrollY; reloadData(); route(); window.scrollTo(0, y);
+}
+window.addEventListener('storage', e => { if (e.key === KEY && !dirty) syncFromStorage(); });
+document.addEventListener('focusout', () => setTimeout(() => { if (pendingSync && !dirty) syncFromStorage(); }, 0));
+
 
 setupPenUI();
-if (!location.hash) location.replace('#/daily/' + ymd(new Date()));
+if (!location.hash) location.replace(document.body.dataset.mode === 'widget' ? '#/widget' : '#/daily/' + ymd(new Date()));
 route();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
