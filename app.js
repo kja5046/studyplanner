@@ -241,7 +241,7 @@ function pageDaily(dateStr) {
   const dn = ddayNum(dateStr);
   const dcal = h('div', { class: 'dcal' }, h('i'), h('i'),
     dn == null
-      ? h('a', { class: 'in', href: '#/settings', style: { textDecoration: 'none', color: 'var(--muted)', fontSize: '14px', padding: '18px 14px' } }, '설정에서 D-day 날짜 넣기')
+      ? h('a', { class: 'in', href: '#/settings', style: { textDecoration: 'none', color: 'var(--muted)', fontSize: '16px', padding: '18px 14px' } }, '설정에서 D-day 날짜 넣기')
       : h('div', { class: 'in' }, h('span', { class: 'big' + (Math.abs(dn) > 999 ? ' small' : '') }, dn === 0 ? 'D-DAY' : dn > 0 ? `D-${dn}` : `D+${-dn}`)),
     dn == null ? null : h('div', { class: 'lbl2' }, data.settings.ddayLabel || ''));
 
@@ -359,7 +359,7 @@ function openImport(dateStr, initial) {
     catch { toast('클립보드를 읽지 못했어요. 칸을 길게 눌러 붙여넣기 해 주세요'); ta.focus(); }
   } }, '클립보드에서 가져오기');
   const box = h('div', { class: 'modal' },
-    h('div', { class: 'modal-head' }, h('span', { class: 'tag pink' }, '계획 붙여넣기'), h('span', { class: 'muted', style: { fontSize: '13px' } }, dateStr)),
+    h('div', { class: 'modal-head' }, h('span', { class: 'tag pink' }, '계획 붙여넣기'), h('span', { class: 'muted', style: { fontSize: '15px' } }, dateStr)),
     ta, info,
     h('details', { class: 'imp-help' }, h('summary', null, '형식 보기'),
       h('pre', null, '날짜: 2026-10-17\n한마디: 더딘 것을 염려하지 말고 멈출 것을 염려하라\n출처: 공자\n아침 | 영어 단어 30개\n     | 듣기 2회\n국어 | 문학 기출 3회분\n- 구분 없이 쓰는 할 일\n[x] 이미 끝낸 일은 이렇게\n메모: 저녁엔 오답 정리'),
@@ -536,8 +536,8 @@ function pageExams(n) {
     const y = v => T + (H - T - B) * (1 - v / max);
     const s = (tag, attrs, text) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
     const svg = s('svg', { viewBox: `0 0 ${W} ${H}` });
-    [0, .5, 1].forEach(f => { const yy = y(max * f); svg.append(s('line', { x1: L, x2: W - 10, y1: yy, y2: yy, stroke: '#ece8e3' }), s('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end', 'font-size': 11, fill: '#97908a' }, Math.round(max * f))); });
-    rows.forEach((r, j) => svg.append(s('text', { x: x(j), y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: '#97908a' }, r.date || r.name || j + 1)));
+    [0, .5, 1].forEach(f => { const yy = y(max * f); svg.append(s('line', { x1: L, x2: W - 10, y1: yy, y2: yy, stroke: '#ece8e3' }), s('text', { x: L - 6, y: yy + 4, 'text-anchor': 'end', 'font-size': 13, fill: '#97908a' }, Math.round(max * f))); });
+    rows.forEach((r, j) => svg.append(s('text', { x: x(j), y: H - 6, 'text-anchor': 'middle', 'font-size': 13, fill: '#97908a' }, r.date || r.name || j + 1)));
     subs.forEach((sub, i) => {
       const pts = rows.map((r, j) => [j, parseFloat((r.s[i] || {}).score)]).filter(p => !isNaN(p[1]));
       if (!pts.length) return;

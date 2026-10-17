@@ -24,7 +24,7 @@
             android:paddingEnd="14dp"
             android:paddingBottom="4dp"
             android:textColor="@color/ink"
-            android:textSize="17sp" />
+            android:textSize="19sp" />
 
         <TextView
             android:id="@+id/w_stamp"
@@ -38,7 +38,7 @@
             android:paddingBottom="1dp"
             android:text="참 잘했어"
             android:textColor="@color/pink_deep"
-            android:textSize="11sp"
+            android:textSize="13sp"
             android:visibility="gone" />
 
         <LinearLayout
@@ -53,14 +53,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/muted"
-                android:textSize="10sp" />
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/w_dday"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/pink"
-                android:textSize="30sp" />
+                android:textSize="32sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -72,7 +72,7 @@
         android:maxLines="2"
         android:ellipsize="end"
         android:textColor="@color/ink"
-        android:textSize="12sp"
+        android:textSize="14sp"
         android:visibility="gone" />
 
     <LinearLayout
@@ -95,7 +95,7 @@
             android:layout_height="wrap_content"
             android:text="오늘 공부 "
             android:textColor="@color/muted"
-            android:textSize="11sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/w_time"
@@ -103,21 +103,21 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="@color/pink"
-            android:textSize="15sp" />
+            android:textSize="17sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="완료 "
             android:textColor="@color/muted"
-            android:textSize="11sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/w_done"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/pink"
-            android:textSize="15sp" />
+            android:textSize="17sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -145,6 +145,6 @@
             android:gravity="center"
             android:text="@string/widget_empty"
             android:textColor="@color/muted"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </FrameLayout>
 </LinearLayout>
