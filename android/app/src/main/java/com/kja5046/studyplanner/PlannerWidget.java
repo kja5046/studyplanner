@@ -86,7 +86,7 @@ public class PlannerWidget extends AppWidgetProvider {
 
         // 공부시간 · 완료
         int minutes = d == null ? 0 : d.optInt("minutes", 0);
-        v.setTextViewText(R.id.w_time, String.format(Locale.KOREA, "%d시간 %02d분", minutes / 60, minutes % 60));
+        v.setTextViewText(R.id.w_time, String.format(Locale.KOREA, "%dH %02dM", minutes / 60, minutes % 60));
         JSONArray tasks = d == null ? null : d.optJSONArray("tasks");
         int total = tasks == null ? 0 : tasks.length();
         int done = 0;

@@ -170,7 +170,7 @@ function pageDaily(dateStr) {
   day.slots = day.slots || Array(144).fill(null);
   const commit = attach(data.days, dateStr, day);
 
-  const hEl = h('span', { class: 'n' }), mEl = h('span', { class: 'n' });
+  const hEl = h('span'), mEl = h('span');
   const brushes = h('div', { class: 'brushes' });
   let brush = Number(sessionStorage.getItem('brush') || 0);
   const refresh = () => {
@@ -242,7 +242,7 @@ function pageDaily(dateStr) {
   const dcal = h('div', { class: 'dcal' }, h('i'), h('i'),
     dn == null
       ? h('a', { class: 'in', href: '#/settings', style: { textDecoration: 'none', color: 'var(--muted)', fontSize: '14px', padding: '18px 14px' } }, '설정에서 D-day 날짜 넣기')
-      : h('div', { class: 'in' }, h('span', { class: 'lbl' }, dn >= 0 ? 'D -' : 'D +'), h('span', { class: 'big' + (Math.abs(dn) > 999 ? ' small' : '') }, dn === 0 ? 'DAY' : Math.abs(dn))),
+      : h('div', { class: 'in' }, h('span', { class: 'big' + (Math.abs(dn) > 999 ? ' small' : '') }, dn === 0 ? 'D-DAY' : dn > 0 ? `D-${dn}` : `D+${-dn}`)),
     dn == null ? null : h('div', { class: 'lbl2' }, data.settings.ddayLabel || ''));
 
   refresh();
@@ -267,8 +267,7 @@ function pageDaily(dateStr) {
               field(day, 'qs', commit, { placeholder: '출처', class: 'field src' })))),
         h('div', null, dcal,
           h('div', { class: 'dstat', title: '오늘 공부시간 (타임라인 합계)' },
-            h('div', { class: 'r' }, hEl, icon('heart'), h('span', { class: 'u' }, '시간')),
-            h('div', { class: 'r' }, mEl, icon('inf'), h('span', { class: 'u' }, '분'))))),
+            h('div', { class: 'r' }, icon('heart'), h('span', { class: 'n' }, hEl, h('small', null, 'H'), ' ', mEl, h('small', null, 'M')))))),
       h('div', { class: 'd-body' }, tasks, h('div', { class: 'tl-wrap' }, tl)),
       brushes),
   };
@@ -873,7 +872,7 @@ function renderWidget() {
       h('div', { class: 'w-dday' }, dn == null ? '' : [h('span', null, data.settings.ddayLabel || 'D-day'), h('b', null, dn === 0 ? 'D-DAY' : dn > 0 ? `D-${dn}` : `D+${-dn}`)])),
     (quote || data.settings.sticker) ? h('div', { class: 'w-quote' }, sticker, h('p', null, quote || '')) : sticker,
     h('div', { class: 'w-stats' },
-      h('div', null, h('span', null, '오늘 공부'), h('b', null, `${Math.floor(mins / 60)}`, h('small', null, '시간 '), pad(mins % 60), h('small', null, '분'))),
+      h('div', null, h('span', null, '오늘 공부'), h('b', null, `${Math.floor(mins / 60)}`, h('small', null, 'H'), ' ', pad(mins % 60), h('small', null, 'M'))),
       h('div', null, h('span', null, '완료'), h('b', null, prog))),
     list,
     h('div', { class: 'w-strip-wrap' },
