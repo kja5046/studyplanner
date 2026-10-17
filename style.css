@@ -308,6 +308,12 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .pager { display: flex; align-items: center; gap: 6px; }
 .pager span { font-size: 16px; color: var(--muted); min-width: 52px; text-align: center; font-family: var(--num); }
 
+/* ---------- drive sync ---------- */
+.sync-sec .sync-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.sync-sec .gdrive { flex: none; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.gdrive-logo { width: 34px; height: 30px; }
+.sync-sec .help { margin-top: 6px; }
+
 /* ---------- widget mode ---------- */
 #widgetRoot { display: none; }
 body.widget-mode .topnav, body.widget-mode #stage { display: none; }

@@ -57,6 +57,7 @@ let saveTimer, dirty = false;
 function flush() {
   clearTimeout(saveTimer);
   if (!dirty) return;
+  stampChanges();
   try { localStorage.setItem(KEY, JSON.stringify(data)); dirty = false; }
   catch (e) { toast('저장 공간이 부족해요. 설정에서 백업 후 정리해 주세요.'); }
   pushAndroid();
@@ -596,6 +597,7 @@ function pageSettings() {
     key: null, title: '설정',
     el: h('div', null,
       h('div', { class: 'ph' }, banner('green', h('h1', { class: 'kr' }, '설정'))),
+      syncSection(),
       h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag pink' }, 'D-day')),
         h('div', { class: 'set-row' },
           h('input', { type: 'text', value: st.ddayLabel, placeholder: '예: 수능', oninput: e => { st.ddayLabel = e.target.value; save(); } }),
@@ -817,6 +819,7 @@ async function loadInk(key) {
 let widgetTimer = null, widgetDay = null;
 function reloadData() {
   try { data = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || 'null') || {}); } catch {}
+  initUnitCache();
 }
 // 이미지 저장(html2canvas)에서도 보이도록 <use> 대신 경로를 직접 넣은 체크 아이콘
 function checkSvg() {
@@ -952,6 +955,153 @@ window.__androidResume = () => {
   pushAndroid();
 };
 
+// ============================================================ 구글 드라이브 동기화 (안드로이드 앱)
+// 구글 드라이브에 둔 동기화 파일 하나를 여러 기기가 함께 읽고 써요.
+// 하루·달·페이지 단위로 마지막에 고친 시간을 기록해서, 더 최근에 고친 쪽 내용이 남아요.
+var unitCache = {}, syncDirty = false, syncOutT = null, syncBusy = false;
+const INK_STAMPS = 'study-planner-ink-stamps';
+function inkStamps() { try { return JSON.parse(localStorage.getItem(INK_STAMPS) || '{}'); } catch { return {}; } }
+function setInkStamps(o) { try { localStorage.setItem(INK_STAMPS, JSON.stringify(o)); } catch {} }
+function hasSync() { try { return !!(window.AndroidBridge && AndroidBridge.syncInfo && AndroidBridge.syncInfo()); } catch { return false; } }
+function syncUnits(d) {
+  const u = { settings: d.settings };
+  for (const k in d.days || {}) u['d:' + k] = d.days[k];
+  for (const k in d.months || {}) u['m:' + k] = d.months[k];
+  [['sp', d.subjectPages], ['lp', d.lecturePages], ['ep', d.examPages]].forEach(([t, arr]) => (arr || []).forEach((x, i) => { if (x) u[t + ':' + i] = x; }));
+  return u;
+}
+function setSyncUnit(d, k, v) {
+  if (k === 'settings') { d.settings = v; return; }
+  const t = k.slice(0, k.indexOf(':')), id = k.slice(k.indexOf(':') + 1);
+  if (t === 'd') d.days[id] = v;
+  else if (t === 'm') d.months[id] = v;
+  else {
+    const arr = t === 'sp' ? d.subjectPages : t === 'lp' ? d.lecturePages : d.examPages;
+    for (let i = 0; i < +id; i++) arr[i] = arr[i] || null;
+    arr[+id] = v;
+  }
+}
+function initUnitCache() {
+  unitCache = {};
+  const u = syncUnits(data);
+  for (const k in u) unitCache[k] = JSON.stringify(u[k]);
+}
+function stampChanges() {
+  data.stamps = data.stamps || {};
+  const u = syncUnits(data);
+  let any = false;
+  for (const k in u) {
+    const j = JSON.stringify(u[k]);
+    if (unitCache[k] !== j) { unitCache[k] = j; data.stamps[k] = Date.now(); any = true; }
+  }
+  if (any) { syncDirty = true; scheduleSyncOut(); }
+}
+function stampAll() {
+  const now = Date.now();
+  data.stamps = data.stamps || {};
+  for (const k in syncUnits(data)) data.stamps[k] = Math.max(data.stamps[k] || 0, now);
+  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {}
+  return Ink.all().then(all => { const s = inkStamps(); for (const k in all) s[k] = Math.max(s[k] || 0, now); setInkStamps(s); });
+}
+function scheduleSyncOut() {
+  if (!hasSync()) return;
+  clearTimeout(syncOutT); syncOutT = setTimeout(() => syncOut(), 4000);
+}
+// 올리기 전에 항상 드라이브 파일을 먼저 읽어 합친 뒤 올린다 (다른 기기 기록을 덮어쓰지 않도록)
+var syncWantWrite = false;
+function syncOut(force) {
+  if (!hasSync()) return;
+  flush();
+  if (!syncDirty && !force) return;
+  syncWantWrite = true;
+  AndroidBridge.syncReadAsync();
+}
+async function writeOut() {
+  if (!hasSync()) return;
+  flush(); syncDirty = false;
+  const payload = JSON.stringify({ app: 'study-planner', v: 2, exportedAt: new Date().toISOString(), data, ink: await Ink.all(), inkStamps: inkStamps() });
+  AndroidBridge.syncWrite(payload);
+  try { localStorage.setItem('study-planner-last-sync', String(Date.now())); } catch {}
+}
+async function syncMerge(text) {
+  let remote = null;
+  try { remote = text ? JSON.parse(text) : null; } catch {}
+  if (!remote || remote.app !== 'study-planner' || !remote.data) return { changed: false, needWrite: true };
+  flush();
+  const rd = Object.assign(defaults(), remote.data);
+  const rs = rd.stamps || {};
+  data.stamps = data.stamps || {};
+  const ls = data.stamps;
+  let changed = false, needWrite = false;
+  const ru = syncUnits(rd), lu = syncUnits(data);
+  for (const k in ru) if ((rs[k] || 0) > (ls[k] || 0)) { setSyncUnit(data, k, ru[k]); ls[k] = rs[k]; changed = true; }
+  for (const k in lu) if ((ls[k] || 0) > (rs[k] || 0)) needWrite = true;
+  const ris = remote.inkStamps || {}, rink = remote.ink || {}, lis = inkStamps();
+  for (const k in ris) if (ris[k] > (lis[k] || 0)) { await Ink.rawSet(k, rink[k] || null); lis[k] = ris[k]; changed = true; }
+  for (const k in lis) if (lis[k] > (ris[k] || 0)) needWrite = true;
+  setInkStamps(lis);
+  if (changed) { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch {} }
+  initUnitCache();
+  return { changed, needWrite };
+}
+// 앱(자바)에서 부르는 함수들
+window.__androidSyncIn = async text => {
+  syncBusy = true;
+  let r = { changed: false, needWrite: false };
+  try { r = await syncMerge(text); } finally { syncBusy = false; }
+  if (r.changed) {
+    if (pen.key) await loadInk(pen.key);
+    const y = window.scrollY; route(); window.scrollTo(0, y); pushAndroid();
+    toast('다른 기기의 기록을 가져왔어요');
+  }
+  if (r.needWrite || syncWantWrite) { syncWantWrite = false; await writeOut(); }
+  try { localStorage.setItem('study-planner-last-sync', String(Date.now())); } catch {}
+};
+window.__androidSyncOut = () => syncOut();
+window.__androidSyncReady = async mode => {
+  if (mode === 'create') { await stampAll(); await writeOut(); toast('구글 드라이브에 동기화 파일을 만들었어요'); }
+  else { toast('동기화 파일을 연결했어요. 기록을 가져오는 중…'); AndroidBridge.syncReadAsync(); }
+  if (location.hash.startsWith('#/settings')) route();
+};
+// 필기·스티커도 고친 시간을 기록
+const inkRawSet = Ink.set;
+Ink.rawSet = inkRawSet;
+Ink.set = (k, v) => { const s = inkStamps(); s[k] = Date.now(); setInkStamps(s); syncDirty = true; scheduleSyncOut(); return inkRawSet(k, v); };
+
+function syncSection() {
+  if (!(window.AndroidBridge && AndroidBridge.syncInfo)) return null;
+  const name = AndroidBridge.syncInfo();
+  let last = '';
+  try { const t = +localStorage.getItem('study-planner-last-sync'); if (t) { const d = new Date(t); last = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; } } catch {}
+  return h('div', { class: 'box set-sec sync-sec' },
+    h('div', { class: 'sync-head' },
+      h('span', { class: 'gdrive' }, driveLogo()),
+      h('div', null,
+        h('h3', { style: { margin: 0 } }, '구글 드라이브 데이터 동기화'),
+        h('p', { class: 'help' }, name
+          ? ['연결됨: ', h('b', null, name), last ? ` · 마지막 동기화 ${last}` : '']
+          : ['기록은 이 기기에만 저장돼서 ', h('b', { style: { color: 'var(--pink-deep)' } }, '앱을 지우면 모두 사라질 수 있어요.'), ' 구글 드라이브에 동기화 파일을 두면 같은 계정의 다른 폰·태블릿과 자동으로 맞춰져요.']))),
+    name
+      ? h('div', { class: 'set-row' },
+          h('button', { class: 'btn primary', onclick: () => { syncOut(true); toast('동기화 중…'); } }, '지금 동기화'),
+          h('button', { class: 'btn', style: { marginLeft: 'auto' }, onclick: () => { if (confirm('이 기기의 동기화 연결을 끊을까요? 기록과 드라이브 파일은 그대로 남아요.')) { AndroidBridge.syncClear(); route(); } } }, '연결 끊기'))
+      : h('div', { class: 'set-row' },
+          h('button', { class: 'btn primary', onclick: () => AndroidBridge.syncCreate() }, '처음 기기: 동기화 파일 만들기'),
+          h('button', { class: 'btn', onclick: () => AndroidBridge.syncOpen() }, '다른 기기: 기존 파일 연결')),
+    name ? null : h('p', { class: 'help', style: { marginTop: '8px', fontSize: '14px' } }, '파일 선택 창이 열리면 왼쪽 메뉴에서 ', h('b', null, 'Google Drive'), '를 고르세요. 처음 기기에서 만든 ', h('b', null, 'planner-sync.json'), ' 파일을 다른 기기에서 “기존 파일 연결”로 고르면 돼요.'));
+}
+function driveLogo() {
+  const svg = document.createElementNS(SVGNS, 'svg'); svg.setAttribute('viewBox', '0 0 87.3 78'); svg.setAttribute('class', 'gdrive-logo');
+  [['M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z', '#0066da'],
+   ['M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9.06 9.06 0 000 53h27.5z', '#00ac47'],
+   ['M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 11.5z', '#ea4335'],
+   ['M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z', '#00832d'],
+   ['M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z', '#2684fc'],
+   ['M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z', '#ffba00']]
+    .forEach(([d, f]) => { const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', d); p.setAttribute('fill', f); p.setAttribute('stroke', 'none'); svg.append(p); });
+  return svg;
+}
+
 // ============================================================ layout / router
 const stage = $('#stage'), wrap = $('#pageWrap'), content = $('#pageContent'), rail = $('#rail');
 let cleanup = [];
@@ -1009,10 +1159,12 @@ document.addEventListener('focusout', () => setTimeout(() => { if (pendingSync &
 
 
 setupPenUI();
+initUnitCache();
 applyAndroidPending();
 if (!location.hash) location.replace(document.body.dataset.mode === 'widget' ? '#/widget' : '#/daily/' + ymd(new Date()));
 route();
 pushAndroid();
+if (hasSync()) AndroidBridge.syncReadAsync(); // 앱을 처음 열 때 드라이브의 최신 기록 가져오기
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

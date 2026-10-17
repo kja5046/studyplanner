@@ -89,6 +89,26 @@ final class Store {
         }
     }
 
+    // ---- 구글 드라이브 동기화 파일 ----
+    private static final String KEY_SYNC_URI = "syncUri";
+    private static final String KEY_SYNC_NAME = "syncName";
+
+    static void setSync(Context c, String uri, String name) {
+        prefs(c).edit().putString(KEY_SYNC_URI, uri).putString(KEY_SYNC_NAME, name).apply();
+    }
+
+    static String syncUri(Context c) {
+        return prefs(c).getString(KEY_SYNC_URI, "");
+    }
+
+    static String syncName(Context c) {
+        return prefs(c).getString(KEY_SYNC_NAME, "");
+    }
+
+    static void clearSync(Context c) {
+        prefs(c).edit().remove(KEY_SYNC_URI).remove(KEY_SYNC_NAME).apply();
+    }
+
     static synchronized String takePending(Context c) {
         String p = prefs(c).getString(KEY_PENDING, "[]");
         prefs(c).edit().remove(KEY_PENDING).apply();
