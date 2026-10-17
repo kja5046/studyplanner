@@ -312,8 +312,8 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 #widgetRoot { display: none; }
 body.widget-mode .topnav, body.widget-mode #stage { display: none; }
 body.widget-mode #widgetRoot { display: block; padding: calc(env(safe-area-inset-top) + 12px) 12px 16px; max-width: 520px; margin: 0 auto; }
-.w-card { background: var(--paper); border: 2px solid var(--line); padding: 8px; position: relative; }
-.w-card { outline: 1px solid var(--line-soft); outline-offset: -8px; }
+.w-card { background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 10px; position: relative; overflow: hidden; }
+.w-card { outline: 1px solid var(--line-soft); outline-offset: -9px; }
 .w-card > * { position: relative; }
 .w-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 10px 4px; }
 .w-head .banner { min-height: 44px; padding: 8px 28px 8px 14px; gap: 10px; }
