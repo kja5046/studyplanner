@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">스터디 플래너</string>
+    <string name="widget_name">오늘 플래너</string>
+    <string name="widget_desc">오늘 할 일, D-day, 공부시간을 보여주고 바로 체크해요</string>
+    <string name="widget_empty">오늘 할 일이 없어요\n눌러서 계획 넣기</string>
+</resources>

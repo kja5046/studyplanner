@@ -59,6 +59,7 @@ function flush() {
   if (!dirty) return;
   try { localStorage.setItem(KEY, JSON.stringify(data)); dirty = false; }
   catch (e) { toast('저장 공간이 부족해요. 설정에서 백업 후 정리해 주세요.'); }
+  pushAndroid();
 }
 function save() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
 // 저장하지 않은 변경이 있을 때만 닫기 전에 저장 (다른 창의 기록을 덮어쓰지 않도록)
@@ -628,6 +629,7 @@ function pageSettings() {
 async function exportBackup() {
   const ink = await Ink.all();
   const blob = new Blob([JSON.stringify({ app: 'study-planner', v: 1, exportedAt: new Date().toISOString(), data, ink })], { type: 'application/json' });
+  if (window.AndroidBridge) { AndroidBridge.saveFile(`planner-backup-${ymd(new Date())}.json`, 'application/json', await blobToBase64(blob)); return; }
   const a = h('a', { href: URL.createObjectURL(blob), download: `planner-backup-${ymd(new Date())}.json` });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -896,6 +898,7 @@ async function saveWidgetImage() {
     const c = await window.html2canvas(card, { scale: 2, backgroundColor: '#fffefc', useCORS: true });
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
     const name = `planner-${ymd(new Date())}.png`;
+    if (window.AndroidBridge) { AndroidBridge.saveFile(name, 'image/png', await blobToBase64(blob)); return; }
     const file = new File([blob], name, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: '오늘 플래너' }); return; }
     const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); a.remove();
@@ -911,6 +914,44 @@ function startWidgetMode() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden && document.body.classList.contains('widget-mode')) { reloadData(); renderWidget(); } });
   widgetTimer = setInterval(() => { if (document.body.classList.contains('widget-mode') && ymd(new Date()) !== widgetDay) { reloadData(); renderWidget(); } }, 60000);
 }
+
+// ============================================================ 안드로이드 앱 연결
+// 안드로이드 앱(WebView) 안에서 열렸을 때만 window.AndroidBridge 가 있어요.
+function blobToBase64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(blob); });
+}
+function pushAndroid() {
+  if (!window.AndroidBridge) return;
+  try {
+    const days = {};
+    for (let k = -1; k <= 7; k++) {
+      const key = ymd(addDays(new Date(), k));
+      const d = data.days[key];
+      const tasks = d && d.tasks ? d.tasks.map((t, i) => ({ i, s: t.s || '', t: t.t || '', d: !!t.d })).filter(t => t.s || t.t) : [];
+      days[key] = { tasks, minutes: dayMinutes(key), q: d ? [d.q1, d.q2].filter(Boolean).join(' ') : '', great: !!(d && d.great) };
+    }
+    AndroidBridge.update(JSON.stringify({ ddayLabel: data.settings.ddayLabel || '', ddayDate: data.settings.ddayDate || '', days }));
+  } catch (e) {}
+}
+function applyAndroidPending() {
+  if (!window.AndroidBridge) return false;
+  let list = [];
+  try { list = JSON.parse(AndroidBridge.takePending() || '[]'); } catch {}
+  let changed = false;
+  for (const p of list) {
+    const d = data.days[p.date];
+    if (d && d.tasks && d.tasks[p.i]) { d.tasks[p.i].d = !!p.d; changed = true; }
+  }
+  if (changed) save();
+  return changed;
+}
+window.__androidFlush = () => flush();
+window.__androidResume = () => {
+  flush(); reloadData();
+  applyAndroidPending();
+  const y = window.scrollY; route(); window.scrollTo(0, y);
+  pushAndroid();
+};
 
 // ============================================================ layout / router
 const stage = $('#stage'), wrap = $('#pageWrap'), content = $('#pageContent'), rail = $('#rail');
@@ -969,8 +1010,10 @@ document.addEventListener('focusout', () => setTimeout(() => { if (pendingSync &
 
 
 setupPenUI();
+applyAndroidPending();
 if (!location.hash) location.replace(document.body.dataset.mode === 'widget' ? '#/widget' : '#/daily/' + ymd(new Date()));
 route();
+pushAndroid();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

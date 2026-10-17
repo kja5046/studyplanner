@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="paper">#FFFEFC</color>
+    <color name="ink">#45413E</color>
+    <color name="line">#4D4845</color>
+    <color name="line_soft">#DCD7D1</color>
+    <color name="line_faint">#ECE8E3</color>
+    <color name="muted">#97908A</color>
+    <color name="pink">#EC8C8C</color>
+    <color name="pink_deep">#E07272</color>
+    <color name="pink_fill">#FBDCD7</color>
+    <color name="bg">#F4F2EF</color>
+</resources>
