@@ -963,9 +963,17 @@ const INK_STAMPS = 'study-planner-ink-stamps';
 function inkStamps() { try { return JSON.parse(localStorage.getItem(INK_STAMPS) || '{}'); } catch { return {}; } }
 function setInkStamps(o) { try { localStorage.setItem(INK_STAMPS, JSON.stringify(o)); } catch {} }
 function hasSync() { try { return !!(window.AndroidBridge && AndroidBridge.syncInfo && AndroidBridge.syncInfo()); } catch { return false; } }
+// 하루 기록은 할 일 / 시간표 / 글(한마디·메모·도장)을 따로 나눠서, 같은 날을 두 기기에서 고쳐도 서로 덮어쓰지 않게 한다
+const DAY_TEXT = ['q1', 'q2', 'qs', 'memo', 'great'];
 function syncUnits(d) {
   const u = { settings: d.settings };
-  for (const k in d.days || {}) u['d:' + k] = d.days[k];
+  for (const k in d.days || {}) {
+    const day = d.days[k] || {};
+    u['d:' + k + '#tasks'] = day.tasks || [];
+    u['d:' + k + '#slots'] = day.slots || [];
+    const text = {}; DAY_TEXT.forEach(f => { if (day[f] !== undefined) text[f] = day[f]; });
+    u['d:' + k + '#text'] = text;
+  }
   for (const k in d.months || {}) u['m:' + k] = d.months[k];
   [['sp', d.subjectPages], ['lp', d.lecturePages], ['ep', d.examPages]].forEach(([t, arr]) => (arr || []).forEach((x, i) => { if (x) u[t + ':' + i] = x; }));
   return u;
@@ -973,7 +981,14 @@ function syncUnits(d) {
 function setSyncUnit(d, k, v) {
   if (k === 'settings') { d.settings = v; return; }
   const t = k.slice(0, k.indexOf(':')), id = k.slice(k.indexOf(':') + 1);
-  if (t === 'd') d.days[id] = v;
+  if (t === 'd') {
+    const [date, part] = id.split('#');
+    if (!part) { d.days[date] = v; return; }
+    const day = d.days[date] = d.days[date] || {};
+    if (part === 'tasks') day.tasks = v || [];
+    else if (part === 'slots') day.slots = v && v.length ? v : Array(144).fill(null);
+    else DAY_TEXT.forEach(f => { if (v && v[f] !== undefined) day[f] = v[f]; else delete day[f]; });
+  }
   else if (t === 'm') d.months[id] = v;
   else {
     const arr = t === 'sp' ? d.subjectPages : t === 'lp' ? d.lecturePages : d.examPages;
@@ -981,18 +996,37 @@ function setSyncUnit(d, k, v) {
     arr[+id] = v;
   }
 }
+// 비교용 정리: 빈 칸·빈 글자·false·끝의 빈 줄을 지워서, 화면을 열 때 빈 줄을 채우는 것만으로는 '고친 것'으로 보지 않게 한다
+function canon(v) {
+  if (v === null || v === undefined || v === '' || v === false) return undefined;
+  if (Array.isArray(v)) {
+    const a = v.map(canon).map(x => x === undefined ? null : x);
+    while (a.length && a[a.length - 1] === null) a.pop();
+    return a.length ? a : undefined;
+  }
+  if (typeof v === 'object') {
+    const o = {}; let any = false;
+    for (const k of Object.keys(v).sort()) { const c = canon(v[k]); if (c !== undefined) { o[k] = c; any = true; } }
+    return any ? o : undefined;
+  }
+  return v;
+}
+const canonJSON = v => JSON.stringify(canon(v)) || '';
+// 예전 버전 파일은 하루 단위('d:날짜')로만 시간이 기록돼 있어서, 세부 칸에 기록이 없으면 그 시간을 쓴다
+const stampOf = (st, k) => st[k] !== undefined ? st[k] : (st[k.split('#')[0]] || 0);
 function initUnitCache() {
   unitCache = {};
   const u = syncUnits(data);
-  for (const k in u) unitCache[k] = JSON.stringify(u[k]);
+  for (const k in u) unitCache[k] = canonJSON(u[k]);
 }
 function stampChanges() {
   data.stamps = data.stamps || {};
   const u = syncUnits(data);
   let any = false;
   for (const k in u) {
-    const j = JSON.stringify(u[k]);
-    if (unitCache[k] !== j) { unitCache[k] = j; data.stamps[k] = Date.now(); any = true; }
+    const j = canonJSON(u[k]);
+    if (unitCache[k] !== undefined && unitCache[k] !== j || unitCache[k] === undefined && j) { unitCache[k] = j; data.stamps[k] = Date.now(); any = true; }
+    else unitCache[k] = j;
   }
   if (any) { syncDirty = true; scheduleSyncOut(); }
 }
@@ -1034,8 +1068,14 @@ async function syncMerge(text) {
   const ls = data.stamps;
   let changed = false, needWrite = false;
   const ru = syncUnits(rd), lu = syncUnits(data);
-  for (const k in ru) if ((rs[k] || 0) > (ls[k] || 0)) { setSyncUnit(data, k, ru[k]); ls[k] = rs[k]; changed = true; }
-  for (const k in lu) if ((ls[k] || 0) > (rs[k] || 0)) needWrite = true;
+  for (const k in ru) {
+    const r = stampOf(rs, k), l = stampOf(ls, k);
+    if (r > l) {
+      if (canonJSON(ru[k]) !== canonJSON(lu[k])) { setSyncUnit(data, k, ru[k]); changed = true; }
+      ls[k] = r;
+    }
+  }
+  for (const k in lu) if (stampOf(ls, k) > stampOf(rs, k) && canonJSON(lu[k]) !== canonJSON(ru[k])) needWrite = true;
   const ris = remote.inkStamps || {}, rink = remote.ink || {}, lis = inkStamps();
   for (const k in ris) if (ris[k] > (lis[k] || 0)) { await Ink.rawSet(k, rink[k] || null); lis[k] = ris[k]; changed = true; }
   for (const k in lis) if (lis[k] > (ris[k] || 0)) needWrite = true;
