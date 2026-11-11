@@ -522,9 +522,19 @@ function pageExams(n) {
   const idx = Math.max(0, n - 1);
   const pages = data.examPages;
   const pg = pages[idx] || {};
-  const commit = () => { pages[idx] = pg; for (let i = 0; i < idx; i++) pages[i] = pages[i] || null; save(); drawChart(); };
+  const commit = () => { pages[idx] = pg; for (let i = 0; i < idx; i++) pages[i] = pages[i] || null; save(); drawChart(); drawTotals(); };
   fill(pg.rows = pg.rows || [], 12, () => ({ date: '', name: '', s: {} }));
   const subs = subjects();
+
+  // 합계 점수 (입력한 과목 점수를 모두 더함)
+  const totals = [];
+  const rowTotal = r => {
+    let sum = 0, any = false;
+    subs.forEach((_, i) => { const v = parseFloat(((r.s || {})[i] || {}).score); if (!isNaN(v)) { sum += v; any = true; } });
+    return any ? String(Math.round(sum * 10) / 10) : '';
+  };
+  const totalEl = (r, tag, cls) => { const el = h(tag, { class: cls }, rowTotal(r)); totals.push([el, r]); return el; };
+  function drawTotals() { totals.forEach(([el, r]) => { el.textContent = rowTotal(r); }); }
 
   const chartBox = h('div', { class: 'box chart' });
   function drawChart() {
@@ -552,17 +562,18 @@ function pageExams(n) {
   }
 
   const table = h('table', { class: 'exam' },
-    h('colgroup', null, h('col', { style: { width: '74px' } }), h('col', { style: { width: '116px' } }), subs.flatMap(() => [h('col'), h('col', { style: { width: '42px' } })])),
+    h('colgroup', null, h('col', { style: { width: '74px' } }), h('col', { style: { width: '116px' } }), subs.flatMap(() => [h('col'), h('col')]), h('col', { style: { width: '62px' } })),
     h('thead', null,
-      h('tr', null, h('th', { rowspan: 2 }, '날짜'), h('th', { rowspan: 2 }, '시험'), subs.map(sb => h('th', { colspan: 2, class: 'sep' }, sb.name))),
-      h('tr', null, subs.flatMap(() => [h('th', { class: 'sep' }, '점수'), h('th', null, '등급')]))),
+      h('tr', null, h('th', { rowspan: 2 }, '날짜'), h('th', { rowspan: 2 }, '시험'), subs.map(sb => h('th', { colspan: 2, class: 'sep' }, sb.name)), h('th', { rowspan: 2, class: 'sep' }, '합계')),
+      h('tr', null, subs.flatMap(() => [h('th', { class: 'sep' }, '점수'), h('th', null, '평균')]))),
     h('tbody', null, pg.rows.map(r => h('tr', null,
       h('td', null, field(r, 'date', commit, { placeholder: '' })),
       h('td', null, field(r, 'name', commit)),
       subs.flatMap((_, i) => {
         const o = r.s[i] = r.s[i] || {};
-        return [h('td', { class: 'sep' }, field(o, 'score', commit, { inputmode: 'decimal' })), h('td', { class: 'grade' }, field(o, 'grade', commit, { inputmode: 'numeric' }))];
-      })))));
+        return [h('td', { class: 'sep' }, field(o, 'score', commit, { inputmode: 'decimal' })), h('td', { class: 'grade' }, field(o, 'grade', commit, { inputmode: 'decimal' }))];
+      }),
+      totalEl(r, 'td', 'sep total')))));
   // 휴대폰: 넓은 표 대신 시험 하나당 카드 한 장 (과목마다 점수·등급 한 줄)
   const rowFilled = r => !!(r.date || r.name || Object.values(r.s || {}).some(v => v && (v.score || v.grade)));
   const cards = h('div', { class: 'exam-cards' });
@@ -572,13 +583,14 @@ function pageExams(n) {
       field(r, 'date', commitCards, { placeholder: '날짜' }),
       field(r, 'name', commitCards, { placeholder: '시험 이름' })),
     h('div', { class: 'ecard-subs' },
-      h('span', { class: 'lbl' }), h('span', { class: 'lbl' }, '점수'), h('span', { class: 'lbl' }, '등급'),
+      h('span', { class: 'lbl' }), h('span', { class: 'lbl' }, '점수'), h('span', { class: 'lbl' }, '평균'),
       subs.flatMap((sb, i) => {
         const o = r.s[i] = r.s[i] || {};
         return [h('span', { class: 'sname' }, h('span', { class: 'dot', style: { background: sb.color } }), sb.name),
           field(o, 'score', commitCards, { inputmode: 'decimal', placeholder: '-' }),
-          h('span', { class: 'grade' }, field(o, 'grade', commitCards, { inputmode: 'numeric', placeholder: '-' }))];
-      })));
+          h('span', { class: 'grade' }, field(o, 'grade', commitCards, { inputmode: 'decimal', placeholder: '-' }))];
+      })),
+    h('div', { class: 'ecard-total' }, h('span', null, '합계'), totalEl(r, 'b', 'total')));
   let shown = 0;
   function drawCards() {
     const last = pg.rows.reduce((m, r, j) => rowFilled(r) ? j : m, -1);
@@ -604,16 +616,37 @@ function pageExams(n) {
   };
 }
 
+// 과목 순서가 바뀌거나 지워질 때, 번호로 저장된 기록(시간표 칸 · 시험 점수)도 원래 과목을 따라가게 고친다
+// map[예전 번호] = 새 번호 (null 이면 그 과목 기록을 지움)
+function remapSubjects(map) {
+  const to = v => map[v] !== undefined ? map[v] : v;
+  for (const k in data.days) {
+    const d = data.days[k];
+    if (d && Array.isArray(d.slots)) d.slots = d.slots.map(v => v == null ? null : to(v));
+  }
+  (data.examPages || []).forEach(pg => (pg && pg.rows || []).forEach(r => {
+    if (!r || !r.s) return;
+    const ns = {};
+    for (const key in r.s) { const nk = to(+key); if (nk != null) ns[nk] = r.s[key]; }
+    r.s = ns;
+  }));
+  try { sessionStorage.removeItem('brush'); } catch {}
+}
+
 function pageSettings() {
   const st = data.settings;
   const list = h('div');
   const drawList = () => list.replaceChildren(...st.subjects.map((s, i) => h('div', { class: 'set-row' },
     h('input', { type: 'color', value: s.color, oninput: e => { s.color = e.target.value; save(); } }),
     h('input', { type: 'text', value: s.name, oninput: e => { s.name = e.target.value; save(); } }),
-    h('button', { class: 'btn', disabled: i === 0, onclick: () => { [st.subjects[i - 1], st.subjects[i]] = [st.subjects[i], st.subjects[i - 1]]; save(); drawList(); } }, '↑'),
+    h('button', { class: 'btn', disabled: i === 0, onclick: () => {
+      [st.subjects[i - 1], st.subjects[i]] = [st.subjects[i], st.subjects[i - 1]];
+      remapSubjects({ [i - 1]: i, [i]: i - 1 }); save(); drawList();
+    } }, '↑'),
     h('button', { class: 'btn', onclick: () => {
-      if (!confirm(`'${s.name}' 과목을 삭제할까요?\n하루 기록 타임라인에서 이 과목으로 칠한 칸 색이 다른 과목으로 바뀔 수 있어요.`)) return;
-      st.subjects.splice(i, 1); save(); drawList();
+      if (!confirm(`'${s.name}' 과목을 삭제할까요?\n이 과목으로 칠한 시간표 칸과 시험 결과 점수도 함께 지워져요. (할 일은 그대로 남아요)`)) return;
+      const map = {}; st.subjects.forEach((_, j) => { map[j] = j < i ? j : j === i ? null : j - 1; });
+      st.subjects.splice(i, 1); remapSubjects(map); save(); drawList();
     } }, '삭제'))),
     st.subjects.length < 8 ? h('button', { class: 'btn', onclick: () => { st.subjects.push({ name: '새 과목', color: '#cccccc' }); save(); drawList(); } }, '+ 과목 추가') : null);
   drawList();
@@ -629,7 +662,7 @@ function pageSettings() {
           h('input', { type: 'text', value: st.ddayLabel, placeholder: '예: 수능', oninput: e => { st.ddayLabel = e.target.value; save(); } }),
           h('input', { type: 'date', value: st.ddayDate, onchange: e => { st.ddayDate = e.target.value; save(); } }))),
       h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag green' }, '과목')),
-        h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록 타임라인 색, 이달의 평가 그래프, 시험 결과 표의 열이 이 목록을 따라가요. 순서를 바꾸면 이미 칠한 칸의 과목도 함께 바뀌니 처음에 정해 두는 걸 권해요.'),
+        h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록 타임라인 색, 이달의 평가 그래프, 시험 결과 표의 열이 이 목록을 따라가요. 순서를 바꿔도 이미 칠한 칸과 시험 점수는 원래 과목을 따라가요. 과목을 지우면 그 과목으로 칠한 칸과 점수도 함께 지워져요.'),
         list),
       h('div', { class: 'box set-sec' }, h('h3', null, h('span', { class: 'tag cream' }, '기본 스티커')),
         h('p', { class: 'help', style: { marginBottom: '10px' } }, '하루 기록의 스티커 칸을 누르면 그날만의 사진이나 그림을 붙일 수 있어요. 여기서 고른 기본 스티커는 그날 스티커를 붙이지 않은 날에 연하게 보여요.'),

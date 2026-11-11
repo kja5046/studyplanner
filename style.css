@@ -291,7 +291,8 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .exam td.sep, .exam th.sep { border-left: 1.5px solid var(--line); }
 .exam .field { font-size: 18px; text-align: center; padding: 0; font-family: var(--num); }
 .exam td:nth-child(2) .field { font-family: var(--body); font-size: 16px; }
-.exam .grade .field { color: var(--pink-deep); }
+.exam .grade .field { color: var(--muted); font-size: 16px; }
+.exam td.total { text-align: center; font-family: var(--num); font-size: 18px; color: var(--pink-deep); background: var(--pink-pale); }
 .exam tbody tr:last-child td { border-bottom: 0; }
 /* 휴대폰 시험 카드 */
 .exam-cards { display: flex; flex-direction: column; gap: 12px; }
@@ -305,7 +306,10 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .ecard-subs .lbl { font-size: 13px; color: var(--muted); text-align: center; padding: 4px 0; }
 .ecard-subs .sname { display: flex; align-items: center; gap: 6px; font-size: 16px; height: 44px; }
 .ecard-subs .field { text-align: center; font-family: var(--num); font-size: 18px; padding: 0; }
-.ecard-subs .grade .field { color: var(--pink-deep); }
+.ecard-subs .grade .field { color: var(--muted); font-size: 16px; }
+.ecard-total { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 14px; border-top: 1.5px solid var(--line); background: var(--pink-pale); }
+.ecard-total span { font-size: 15px; color: var(--muted); }
+.ecard-total .total { font-family: var(--num); font-size: 22px; font-weight: 500; color: var(--pink-deep); min-height: 26px; }
 .ecard-subs .field:focus { background: var(--pink-pale); }
 .fb { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
 .fb textarea { padding: 0 14px 6px; }
