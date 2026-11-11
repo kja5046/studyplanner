@@ -1,6 +1,6 @@
 // 오프라인용 서비스워커
 // 온라인이면 항상 최신 파일을 먼저 받고(네트워크 우선), 오프라인일 때만 저장해 둔 파일을 씁니다.
-const CACHE = 'study-planner-v16';
+const CACHE = 'study-planner-v17';
 const ASSETS = ['./', 'index.html', 'style.css?v=16', 'app.js?v=16', 'manifest.webmanifest', 'widget.html', 'widget.webmanifest', 'vendor/html2canvas.min.js', 'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

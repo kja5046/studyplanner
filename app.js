@@ -563,6 +563,32 @@ function pageExams(n) {
         const o = r.s[i] = r.s[i] || {};
         return [h('td', { class: 'sep' }, field(o, 'score', commit, { inputmode: 'decimal' })), h('td', { class: 'grade' }, field(o, 'grade', commit, { inputmode: 'numeric' }))];
       })))));
+  // 휴대폰: 넓은 표 대신 시험 하나당 카드 한 장 (과목마다 점수·등급 한 줄)
+  const rowFilled = r => !!(r.date || r.name || Object.values(r.s || {}).some(v => v && (v.score || v.grade)));
+  const cards = h('div', { class: 'exam-cards' });
+  const examCard = (r, j) => h('div', { class: 'ecard' },
+    h('div', { class: 'ecard-head' },
+      h('span', { class: 'ecard-no' }, j + 1),
+      field(r, 'date', commitCards, { placeholder: '날짜' }),
+      field(r, 'name', commitCards, { placeholder: '시험 이름' })),
+    h('div', { class: 'ecard-subs' },
+      h('span', { class: 'lbl' }), h('span', { class: 'lbl' }, '점수'), h('span', { class: 'lbl' }, '등급'),
+      subs.flatMap((sb, i) => {
+        const o = r.s[i] = r.s[i] || {};
+        return [h('span', { class: 'sname' }, h('span', { class: 'dot', style: { background: sb.color } }), sb.name),
+          field(o, 'score', commitCards, { inputmode: 'decimal', placeholder: '-' }),
+          h('span', { class: 'grade' }, field(o, 'grade', commitCards, { inputmode: 'numeric', placeholder: '-' }))];
+      })));
+  let shown = 0;
+  function drawCards() {
+    const last = pg.rows.reduce((m, r, j) => rowFilled(r) ? j : m, -1);
+    const n = Math.min(pg.rows.length, last + 2); // 채운 시험 + 빈 카드 하나
+    if (n === shown) return;
+    for (let j = shown; j < n; j++) cards.append(examCard(pg.rows[j], j));
+    shown = n;
+  }
+  function commitCards() { commit(); drawCards(); }
+  if (isMobile()) drawCards();
   drawChart();
 
   return {
@@ -570,7 +596,7 @@ function pageExams(n) {
     title: '시험 결과',
     el: h('div', null,
       h('div', { class: 'ph' }, banner('cream', h('h1', { class: 'kr' }, '시험 결과 정리')), pager('exams', idx, Math.max(pages.length, idx + 1))),
-      h('div', { class: 'box exam-wrap' }, table),
+      isMobile() ? cards : h('div', { class: 'box exam-wrap' }, table),
       chartBox,
       h('div', { class: 'fb' },
         h('div', { class: 'box' }, h('div', { class: 'box-title' }, h('span', { class: 'tag pink' }, '칭찬해')), area(pg, 'good', commit, 4)),

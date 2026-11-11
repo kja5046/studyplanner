@@ -293,6 +293,20 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .exam td:nth-child(2) .field { font-family: var(--body); font-size: 16px; }
 .exam .grade .field { color: var(--pink-deep); }
 .exam tbody tr:last-child td { border-bottom: 0; }
+/* 휴대폰 시험 카드 */
+.exam-cards { display: flex; flex-direction: column; gap: 12px; }
+.ecard { border: 1.5px solid var(--line); background: #fff; border-radius: 12px; overflow: hidden; }
+.ecard-head { display: grid; grid-template-columns: 28px 92px 1fr; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1.5px solid var(--line); background: var(--pink-pale); }
+.ecard-no { font-family: var(--num); color: var(--muted); font-size: 15px; text-align: center; }
+.ecard-head .field { background: #fff; border: 1px solid var(--line-soft); border-radius: 8px; padding: 0 8px; min-width: 0; }
+.ecard-subs { display: grid; grid-template-columns: 1fr 84px 64px; align-items: center; padding: 4px 10px 8px; }
+.ecard-subs > * { border-bottom: 1px solid var(--line-faint); min-width: 0; }
+.ecard-subs > :nth-last-child(-n+3) { border-bottom: 0; }
+.ecard-subs .lbl { font-size: 13px; color: var(--muted); text-align: center; padding: 4px 0; }
+.ecard-subs .sname { display: flex; align-items: center; gap: 6px; font-size: 16px; height: 44px; }
+.ecard-subs .field { text-align: center; font-family: var(--num); font-size: 18px; padding: 0; }
+.ecard-subs .grade .field { color: var(--pink-deep); }
+.ecard-subs .field:focus { background: var(--pink-pale); }
 .fb { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
 .fb textarea { padding: 0 14px 6px; }
 .chart { margin-top: 18px; padding: 12px 16px; }
@@ -303,6 +317,8 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .set-sec h3 { margin: 0 0 12px; font-size: 20px; font-weight: 400; display: flex; align-items: center; gap: 8px; }
 .set-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .set-row input[type=text], .set-row input[type=date] { border: 1.3px solid var(--line-soft); border-radius: 8px; padding: 6px 10px; background: #fff; }
+.set-row input[type=text] { flex: 1 1 100px; min-width: 0; max-width: 100%; }
+.set-row input[type=date] { flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .set-row input[type=color] { width: 38px; height: 32px; border: 1.3px solid var(--line-soft); border-radius: 8px; padding: 2px; background: #fff; }
 .help { font-size: 16px; color: var(--muted); line-height: 1.8; margin: 0; }
 
@@ -514,7 +530,9 @@ body.widget-mode #widgetRoot { display: block; padding: calc(env(safe-area-inset
   body.fitday .tasks .row .subj .field { font-size: 11px; padding: 0 2px; }
   body.fitday .check { width: 28px; height: 100%; }
   body.fitday .check svg { width: 20px; height: 20px; }
-  body.fitday .tasks .foot { flex: 0 0 auto; min-height: 0; grid-template-columns: 1fr 30px; }
+  /* 한마디 칸은 할 일이 넘쳐도 항상 아래에 붙어 보이게 */
+  body.fitday .tasks .foot { flex: 0 0 auto; min-height: 0; grid-template-columns: 1fr 30px; position: sticky; bottom: 0; z-index: 1; background: var(--paper, #fffefc); }
+  body.fitday .tasks .row:not(.foot) { flex: 1 0 20px; min-height: 20px; }
   body.fitday .tasks .foot textarea { height: 44px !important; padding: 4px 6px 0; font-size: 12px; line-height: 20px; background-image: none; }
   body.fitday .ribbon { width: 22px; padding: 6px 0; font-size: 9px; letter-spacing: 0; }
   body.fitday .tl-wrap { order: 0; border-top: 0; border-bottom: 0; border-left: 1.5px solid var(--line); min-height: 0; overflow-y: auto; }
