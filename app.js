@@ -930,9 +930,11 @@ function pushAndroid() {
       const key = ymd(addDays(new Date(), k));
       const d = data.days[key];
       const tasks = d && d.tasks ? d.tasks.map((t, i) => ({ i, s: t.s || '', t: t.t || '', d: !!t.d })).filter(t => t.s || t.t) : [];
-      days[key] = { tasks, minutes: dayMinutes(key), q: d ? [d.q1, d.q2].filter(Boolean).join(' ') : '', great: !!(d && d.great) };
+      const slots = d && d.slots ? Array.from({ length: 144 }, (_, i) => d.slots[i] == null ? -1 : d.slots[i]) : [];
+      days[key] = { tasks, slots, minutes: dayMinutes(key), q: d ? [d.q1, d.q2].filter(Boolean).join(' ') : '', great: !!(d && d.great) };
     }
-    AndroidBridge.update(JSON.stringify({ ddayLabel: data.settings.ddayLabel || '', ddayDate: data.settings.ddayDate || '', days }));
+    const subj = subjects().map(s => ({ name: s.name || '', color: s.color || '#dddddd' }));
+    AndroidBridge.update(JSON.stringify({ ddayLabel: data.settings.ddayLabel || '', ddayDate: data.settings.ddayDate || '', startHour: START_HOUR, subjects: subj, days }));
   } catch (e) {}
 }
 function applyAndroidPending() {
@@ -941,6 +943,15 @@ function applyAndroidPending() {
   try { list = JSON.parse(AndroidBridge.takePending() || '[]'); } catch {}
   let changed = false;
   for (const p of list) {
+    // 위젯 시간표 팝업에서 칠한 칸 (v: 과목 번호, -1이면 지움)
+    if (p.k === 'slot') {
+      if (!p.date || !(p.idx >= 0 && p.idx < 144)) continue;
+      const day = data.days[p.date] = data.days[p.date] || {};
+      if (!day.slots || day.slots.length !== 144) day.slots = Array.from({ length: 144 }, (_, i) => (day.slots || [])[i] ?? null);
+      const v = p.v == null || p.v < 0 ? null : p.v;
+      if (day.slots[p.idx] !== v) { day.slots[p.idx] = v; changed = true; }
+      continue;
+    }
     const d = data.days[p.date];
     if (d && d.tasks && d.tasks[p.i]) { d.tasks[p.i].d = !!p.d; changed = true; }
   }

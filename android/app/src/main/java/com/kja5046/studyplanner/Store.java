@@ -89,6 +89,62 @@ final class Store {
         }
     }
 
+    /**
+     * 위젯 시간표 팝업에서 칠한 칸: 화면용 요약(칸·공부시간)을 바로 바꾸고, 앱이 열리면 반영할 대기열에 넣는다.
+     * changes 는 칸 번호(0~143) → 과목 번호(-1 이면 지움).
+     */
+    static synchronized void paintSlots(Context c, String date, java.util.Map<Integer, Integer> changes) {
+        if (date == null || changes == null || changes.isEmpty()) return;
+        try {
+            JSONObject s = summary(c);
+            JSONObject days = s.optJSONObject("days");
+            if (days == null) { days = new JSONObject(); s.put("days", days); }
+            JSONObject d = days.optJSONObject(date);
+            if (d == null) { d = new JSONObject(); d.put("tasks", new JSONArray()); days.put(date, d); }
+            JSONArray old = d.optJSONArray("slots");
+            JSONArray slots = new JSONArray();
+            for (int k = 0; k < 144; k++) slots.put(old != null && k < old.length() ? old.optInt(k, -1) : -1);
+            for (java.util.Map.Entry<Integer, Integer> e : changes.entrySet()) {
+                int i = e.getKey();
+                if (i >= 0 && i < 144) slots.put(i, e.getValue());
+            }
+            int filled = 0;
+            for (int k = 0; k < 144; k++) if (slots.optInt(k, -1) >= 0) filled++;
+            d.put("slots", slots);
+            d.put("minutes", filled * 10);
+            prefs(c).edit().putString(KEY_SUMMARY, s.toString()).apply();
+
+            JSONArray pending = new JSONArray(prefs(c).getString(KEY_PENDING, "[]"));
+            JSONArray next = new JSONArray();
+            for (int k = 0; k < pending.length(); k++) {
+                JSONObject p = pending.optJSONObject(k);
+                if (p == null) continue;
+                if ("slot".equals(p.optString("k")) && date.equals(p.optString("date"))
+                        && changes.containsKey(p.optInt("idx", -1))) continue;
+                next.put(p);
+            }
+            for (java.util.Map.Entry<Integer, Integer> e : changes.entrySet()) {
+                JSONObject item = new JSONObject();
+                item.put("k", "slot");
+                item.put("date", date);
+                item.put("idx", (int) e.getKey());
+                item.put("v", (int) e.getValue());
+                next.put(item);
+            }
+            prefs(c).edit().putString(KEY_PENDING, next.toString()).apply();
+        } catch (JSONException ignored) {
+        }
+    }
+
+    /** 시간표 팝업에서 마지막으로 고른 과목 */
+    static int brush(Context c) {
+        return prefs(c).getInt("brush", 0);
+    }
+
+    static void setBrush(Context c, int i) {
+        prefs(c).edit().putInt("brush", i).apply();
+    }
+
     // ---- 구글 드라이브 동기화 파일 ----
     private static final String KEY_SYNC_URI = "syncUri";
     private static final String KEY_SYNC_NAME = "syncName";

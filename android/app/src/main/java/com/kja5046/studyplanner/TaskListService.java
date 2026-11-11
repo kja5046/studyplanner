@@ -79,10 +79,16 @@ public class TaskListService extends RemoteViewsService {
             v.setTextColor(R.id.i_t, done ? MUTED : INK);
             v.setTextColor(R.id.i_check, done ? PINK : CHECK_OFF);
 
-            Intent fill = new Intent();
-            fill.putExtra(PlannerWidget.EXTRA_DATE, date);
-            fill.putExtra(PlannerWidget.EXTRA_INDEX, t.optInt("i", -1));
-            v.setOnClickFillInIntent(R.id.i_root, fill);
+            // ✓ 칸: 완료 체크
+            Intent toggle = new Intent();
+            toggle.putExtra(TimetableActivity.EXTRA_OP, TimetableActivity.OP_TOGGLE);
+            toggle.putExtra(PlannerWidget.EXTRA_DATE, date);
+            toggle.putExtra(PlannerWidget.EXTRA_INDEX, t.optInt("i", -1));
+            v.setOnClickFillInIntent(R.id.i_check, toggle);
+            // 글자 부분: 시간표 팝업
+            Intent popup = new Intent();
+            popup.putExtra(TimetableActivity.EXTRA_OP, TimetableActivity.OP_TIMETABLE);
+            v.setOnClickFillInIntent(R.id.i_root, popup);
             return v;
         }
 

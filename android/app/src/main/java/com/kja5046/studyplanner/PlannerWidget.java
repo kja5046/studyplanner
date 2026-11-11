@@ -109,10 +109,23 @@ public class PlannerWidget extends AppWidgetProvider {
         v.setRemoteAdapter(R.id.w_list, svc);
         v.setEmptyView(R.id.w_list, R.id.w_empty);
 
-        Intent toggle = new Intent(context, PlannerWidget.class).setAction(ACTION_TOGGLE);
-        PendingIntent toggleTemplate = PendingIntent.getBroadcast(context, 1, toggle,
+        // 할 일 줄: ✓ 는 체크, 나머지는 시간표 팝업 (어느 쪽인지는 줄마다 채워 넣는 op 로 나뉜다)
+        Intent popup = new Intent(context, TimetableActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        PendingIntent itemTemplate = PendingIntent.getActivity(context, 4, popup,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-        v.setPendingIntentTemplate(R.id.w_list, toggleTemplate);
+        v.setPendingIntentTemplate(R.id.w_list, itemTemplate);
+
+        // 빈 공간 · 공부시간 줄을 누르면 시간표 팝업
+        Intent popupOpen = new Intent(context, TimetableActivity.class)
+                .putExtra(TimetableActivity.EXTRA_OP, TimetableActivity.OP_TIMETABLE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        PendingIntent popupPi = PendingIntent.getActivity(context, 5, popupOpen,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        v.setOnClickPendingIntent(R.id.w_stats, popupPi);
+        v.setOnClickPendingIntent(R.id.w_body, popupPi);
+        v.setOnClickPendingIntent(R.id.w_fill, popupPi);
+        v.setOnClickPendingIntent(R.id.w_empty, popupPi);
 
         // 머리 부분을 누르면 앱의 오늘 페이지 열기
         Intent open = new Intent(context, MainActivity.class)
@@ -122,7 +135,6 @@ public class PlannerWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         v.setOnClickPendingIntent(R.id.w_head, openPi);
         v.setOnClickPendingIntent(R.id.w_quote, openPi);
-        v.setOnClickPendingIntent(R.id.w_empty, openPi);
         return v;
     }
 

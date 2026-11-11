@@ -84,6 +84,7 @@
         android:orientation="horizontal" />
 
     <LinearLayout
+        android:id="@+id/w_stats"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -128,16 +129,31 @@
         android:orientation="horizontal" />
 
     <FrameLayout
+        android:id="@+id/w_body"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <ListView
-            android:id="@+id/w_list"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="@color/line_faint"
-            android:dividerHeight="1dp" />
+            android:orientation="vertical">
+
+            <ListView
+                android:id="@+id/w_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:divider="@color/line_faint"
+                android:dividerHeight="1dp" />
+
+            <!-- 목록 아래 빈 공간: 누르면 시간표 팝업 -->
+            <LinearLayout
+                android:id="@+id/w_fill"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="horizontal" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/w_empty"
