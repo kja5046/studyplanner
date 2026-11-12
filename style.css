@@ -275,12 +275,17 @@ textarea.field { height: auto; resize: none; line-height: 34px; }
 .lec .meta .r { display: grid; grid-template-columns: 62px 1fr; align-items: center; border-bottom: 1px solid var(--line-soft); height: 50px; }
 .lec .meta .r:last-child { border-bottom: 0; }
 .lec .meta .r span { font-size: 15px; color: var(--muted); padding-left: 12px; }
-.lec .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; padding: 14px; align-content: start; }
+.lec .grid { padding: 14px; align-self: start; }
+.lec .nums { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
 .lec .grid button {
   aspect-ratio: 1; border-radius: 50%; border: 1.3px solid var(--line-soft); background: #fff; font-size: 13px; color: var(--muted); padding: 0; font-family: var(--num);
 }
 .lec .grid button.on { background: var(--pink-fill); border-color: var(--pink); color: var(--ink); }
-.lec .prog { grid-column: 1 / -1; font-size: 15px; color: var(--muted); text-align: right; }
+.lec .prog { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 15px; color: var(--muted); }
+.lec .lec-pager { display: inline-flex; align-items: center; gap: 6px; }
+.lec .lec-pg { font-family: var(--num); min-width: 64px; text-align: center; }
+.lec .grid .lec-nav { width: 34px; height: 30px; aspect-ratio: auto; border-radius: 8px; font-size: 18px; color: var(--ink); border: 1.3px solid var(--line-soft); background: #fff; }
+.lec .grid .lec-nav:disabled { opacity: .35; }
 
 /* ---------- exams ---------- */
 .exam { border-collapse: collapse; width: 100%; table-layout: fixed; }
@@ -483,7 +488,7 @@ body.widget-mode #widgetRoot { display: block; padding: calc(env(safe-area-inset
   .sgrid { grid-template-columns: 1fr; }
   .lec { grid-template-columns: 1fr; }
   .lec .meta { border-right: 0; border-bottom: 1.5px solid var(--line); }
-  .lec .grid { grid-template-columns: repeat(10, 1fr); }
+  .lec .nums { grid-template-columns: repeat(10, 1fr); }
   .lec .grid button { font-size: 12px; }
   .exam-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .exam { min-width: 720px; }

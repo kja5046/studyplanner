@@ -494,16 +494,35 @@ function pageLectures(n) {
   const pg = pages[idx] || {};
   const commit = () => { pages[idx] = pg; for (let i = 0; i < idx; i++) pages[i] = pages[i] || null; save(); };
   fill(pg.lecs = pg.lecs || [], 4, () => ({ subj: '', teacher: '', title: '', period: '', memo: '', done: [] }));
-  const blocks = pg.lecs.map(L => {
-    const prog = h('div', { class: 'prog' });
+  // 강의는 100강까지: 1~60강, 61~100강 두 쪽으로 넘겨 본다
+  const LEC_PAGES = [[0, 60], [60, 100]];
+  const blocks = pg.lecs.map((L, li) => {
+    const prog = h('span', { class: 'prog-n' });
     const upd = () => { const c = L.done.filter(Boolean).length; prog.textContent = c ? `${c}강 완료` : ''; };
     const grid = h('div', { class: 'grid' });
-    for (let i = 0; i < 60; i++) {
-      const b = h('button', { type: 'button', class: L.done[i] ? 'on' : '' }, i + 1);
-      b.addEventListener('click', () => { L.done[i] = !L.done[i]; b.classList.toggle('on', L.done[i]); upd(); commit(); });
-      grid.append(b);
-    }
-    grid.append(prog); upd();
+    const nums = h('div', { class: 'nums' });
+    const pgLabel = h('span', { class: 'lec-pg' });
+    const prev = h('button', { type: 'button', class: 'lec-nav', 'aria-label': '이전 강의 번호' }, '‹');
+    const next = h('button', { type: 'button', class: 'lec-nav', 'aria-label': '다음 강의 번호' }, '›');
+    const sKey = `lec-page:${idx}:${li}`;
+    let part = 0;
+    try { part = Math.min(LEC_PAGES.length - 1, Math.max(0, +sessionStorage.getItem(sKey) || 0)); } catch {}
+    const show = p => {
+      part = p; try { sessionStorage.setItem(sKey, p); } catch {}
+      const [a, z] = LEC_PAGES[p];
+      nums.replaceChildren();
+      for (let i = a; i < z; i++) {
+        const b = h('button', { type: 'button', class: L.done[i] ? 'on' : '' }, i + 1);
+        b.addEventListener('click', () => { L.done[i] = !L.done[i]; b.classList.toggle('on', L.done[i]); upd(); commit(); });
+        nums.append(b);
+      }
+      pgLabel.textContent = `${a + 1}~${z}강`;
+      prev.disabled = p === 0; next.disabled = p === LEC_PAGES.length - 1;
+    };
+    prev.addEventListener('click', () => show(part - 1));
+    next.addEventListener('click', () => show(part + 1));
+    grid.append(nums, h('div', { class: 'prog' }, h('span', { class: 'lec-pager' }, prev, pgLabel, next), prog));
+    show(part); upd();
     const R = (label, k) => h('div', { class: 'r' }, h('span', null, label), field(L, k, commit));
     return h('div', { class: 'box lec' },
       h('div', { class: 'meta' }, R('과목', 'subj'), R('선생님', 'teacher'), R('강좌', 'title'), R('기간', 'period'), R('메모', 'memo')),
